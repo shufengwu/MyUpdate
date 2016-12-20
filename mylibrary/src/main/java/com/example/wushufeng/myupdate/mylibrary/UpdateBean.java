@@ -6,13 +6,16 @@ package com.example.wushufeng.myupdate.mylibrary;
 
 public class UpdateBean {
 
+
     /**
      * version : 2.0
+     * versionCode : 2
      * url : https://github.com/shufengwu/update_server/raw/master/app-debug.apk
      * description : 检测到最新版本，请及时更新！
      */
 
     private String version;
+    private String versionCode;
     private String url;
     private String description;
 
@@ -22,6 +25,14 @@ public class UpdateBean {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+    public String getVersionCode() {
+        return versionCode;
+    }
+
+    public void setVersionCode(String versionCode) {
+        this.versionCode = versionCode;
     }
 
     public String getUrl() {
