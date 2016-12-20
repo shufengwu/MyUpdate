@@ -1,6 +1,8 @@
 package com.example.wushufeng.myupdate.mylibrary;
 
 import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,7 +15,7 @@ import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.widget.ProgressBar;
+import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
@@ -23,19 +25,23 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.text.DecimalFormat;
 
 /**
  * Created by wushufeng on 2016/12/19.
  */
 
 public class NetworkLib {
+    static Notification notifyBuilder;
+    static NotificationCompat.Builder builder;
+    static NotificationManager mNotificationManager;
+
+    public static int notifyProgress = 0;
+    public static int maxProgress = 0;
+
     public static ConnectivityManager mConnectivity;
     //检查网络连接
     public static NetworkInfo info;
@@ -120,6 +126,7 @@ public class NetworkLib {
         progressDialog.setIcon(android.R.drawable.ic_dialog_alert);
         progressDialog.setMessage("正在下载更新...");
         progressDialog.show();
+        showNotification(context);
         new Thread() {
             @Override
             public void run() {
@@ -127,7 +134,8 @@ public class NetworkLib {
                     URL url = new URL(urlStr);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setConnectTimeout(5000);
-                    progressDialog.setMax(conn.getContentLength());
+                    maxProgress = conn.getContentLength();
+                    progressDialog.setMax(maxProgress);
                     InputStream inputStream = conn.getInputStream();
                     File file = new File(Environment.getExternalStorageDirectory(), "updata.apk");
                     FileOutputStream fos = new FileOutputStream(file);
@@ -168,32 +176,30 @@ public class NetworkLib {
             switch (msg.what) {
                 //wifi下更新提示对话框
                 case 0:
-                    try {
-                        new AlertDialog.Builder(context)
-                                .setTitle("提示")
-                                .setMessage("当前版本为:" + getVersionName(context) + " Code:" + getVersionCode(context)
-                                        + "\n发现新版本:" + updateBean.getVersion() + " Code:" + updateBean.getVersionCode()
-                                        + "\n更新日志:"
-                                        + "\n" + URLEncoder.encode(updateBean.getDescription(), "utf-8"))
-                                .setIcon(android.R.drawable.ic_dialog_alert)
-                                .setPositiveButton("更新", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-                                        downNewApk(updateBean.getUrl(), context);
-                                        dialogInterface.dismiss();
-                                    }
-                                })
-                                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialogInterface, int i) {
-                                        dialogInterface.dismiss();
-                                    }
-                                })
-                                .create()
-                                .show();
-                    } catch (UnsupportedEncodingException e) {
-                        e.printStackTrace();
-                    }
+
+                    new AlertDialog.Builder(context)
+                            .setTitle("提示")
+                            .setMessage("当前版本为:" + getVersionName(context) + " Code:" + getVersionCode(context)
+                                    + "\n发现新版本:" + updateBean.getVersion() + " Code:" + updateBean.getVersionCode()
+                                    + "\n更新日志:"
+                                    + "\n" + updateBean.getDescription())
+                            .setIcon(android.R.drawable.ic_dialog_alert)
+                            .setPositiveButton("更新", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    downNewApk(updateBean.getUrl(), context);
+                                    dialogInterface.dismiss();
+                                }
+                            })
+                            .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    dialogInterface.dismiss();
+                                }
+                            })
+                            .create()
+                            .show();
+
 
                     break;
                 //数据网络下更新提示对话框
@@ -252,7 +258,7 @@ public class NetworkLib {
                                 @Override
                                 public void onClick(DialogInterface dialogInterface, int i) {
                                     File file = new File(Environment.getExternalStorageDirectory(), "updata.apk");
-                                    installApk(context,file);
+                                    installApk(context, file);
                                     dialogInterface.dismiss();
                                 }
                             })
@@ -270,6 +276,8 @@ public class NetworkLib {
                     int p = (int) msg.obj;
                     progressDialog.setProgress(p);
                     progressDialog.setProgressNumberFormat(getChangedContentLength(p) + "/" + getChangedContentLength(progressDialog.getMax()));
+                    builder.setProgress(100, getPercentProgress(notifyProgress), false);
+                    mNotificationManager.notify(0, builder.build());
                     break;
             }
         }
@@ -314,6 +322,13 @@ public class NetworkLib {
         return res;
     }
 
+    static int getPercentProgress(int progress){
+        int res = 0;
+        String tmp = new BigDecimal((double) progress / maxProgress).setScale(2, BigDecimal.ROUND_DOWN)+"";
+        res = (int)Double.parseDouble(tmp);
+        return res;
+    }
+
     //安装apk
     public static void installApk(Context context, File file) {
         Intent intent = new Intent();
@@ -323,6 +338,21 @@ public class NetworkLib {
         intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
         context.startActivity(intent);
         android.os.Process.killProcess(android.os.Process.myPid());
+    }
+
+    public static void showNotification(Context context) {
+
+        builder= new NotificationCompat.Builder(context);
+        builder.setSmallIcon(android.R.drawable.ic_dialog_info);
+        builder.setAutoCancel(false);
+        builder.setOngoing(false);
+        builder.setShowWhen(true);
+        builder.setContentTitle("正在下载更新... " + notifyProgress + "%");
+        builder.setProgress(100, notifyProgress, false);
+        notifyBuilder = builder.build();
+        mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.notify(0, notifyBuilder);
+
     }
 
 
