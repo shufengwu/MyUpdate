@@ -1,6 +1,5 @@
 package com.example.wushufeng.myupdate.mylibrary;
 
-
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -11,12 +10,15 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
-import android.util.Log;
+import android.webkit.MimeTypeMap;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -126,31 +128,26 @@ public class NetworkLib {
         }.start();
     }
 
-    private static void downNewApk(final String urlStr, Context context) {
+    private static void downNewApk(final String urlStr, final Context context) {
         //显示ProgressDialog
         showProgerssDialog(context);
         new Thread() {
             @Override
             public void run() {
                 try {
-                    Log.e("NetworkLib","-----------------------1");
                     URL url = new URL(urlStr);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setConnectTimeout(5000);
                     maxProgress = conn.getContentLength();
                     progressDialog.setMax(maxProgress);
-                    Log.e("NetworkLib","-----------------------2");
                     InputStream inputStream = conn.getInputStream();
                     File file = new File(Environment.getExternalStorageDirectory(), "updata.apk");
                     FileOutputStream fos = new FileOutputStream(file);
                     BufferedInputStream bis = new BufferedInputStream(inputStream);
-                    Log.e("NetworkLib","-----------------------3");
                     byte[] buffer = new byte[1024];
                     int len;
                     int total = 0;
-                    Log.e("NetworkLib","-----------------------4");
                     while ((len = bis.read(buffer)) != -1) {
-                        Log.e("NetworkLib","-----------------------5");
                         fos.write(buffer, 0, len);
                         total += len;
                         //获取当前下载量,更新progressdialog
@@ -338,13 +335,25 @@ public class NetworkLib {
 
     //安装apk
     private static void installApk(Context context, File file) {
-        Intent intent = new Intent();
-        //执行动作
-        intent.setAction(Intent.ACTION_VIEW);
-        //执行的数据类型
-        intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
-        context.startActivity(intent);
-        android.os.Process.killProcess(android.os.Process.myPid());
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            Intent intents = new Intent();
+            intents.setAction("android.intent.action.VIEW");
+            intents.addCategory("android.intent.category.DEFAULT");
+            intents.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
+            intents.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intents);
+        } else {
+            if (file.exists()) {
+                Uri uri = FileProvider.getUriForFile(context, "hehe.fileprovider", file);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.addCategory("android.intent.category.DEFAULT");
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                context.startActivity(intent);
+                android.os.Process.killProcess(android.os.Process.myPid());
+            }
+        }
     }
 
     //显示ProgerssDialog
@@ -356,8 +365,6 @@ public class NetworkLib {
         progressDialog.setMessage("正在下载更新...");
         progressDialog.show();
     }
-
-    //static
 
     //显示Notification
     private static void showNotification(Context context) {
@@ -383,6 +390,7 @@ public class NetworkLib {
         mNotificationManager.notify(0, notifyBuilder);
 
     }
+
 }
 
 
