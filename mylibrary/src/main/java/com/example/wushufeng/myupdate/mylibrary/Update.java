@@ -4,7 +4,7 @@ package com.example.wushufeng.myupdate.mylibrary;
  * Created by wushufeng on 2016/12/19.
  */
 
-public class UpdateBean {
+public class Update {
 
 
     /**

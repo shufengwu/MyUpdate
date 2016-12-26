@@ -17,8 +17,6 @@ import android.os.Message;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
-import android.webkit.MimeTypeMap;
-import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -46,7 +44,7 @@ public class NetworkLib {
     private static ConnectivityManager mConnectivity;
     //检查网络连接
     public static NetworkInfo info;
-    private static UpdateBean updateBean;
+    private static Update updateBean;
     private static ProgressDialog progressDialog = null;
     public static MyHandler myHandler;
     private static int updateCount_pBar = 0;
@@ -168,8 +166,8 @@ public class NetworkLib {
         }.start();
     }
 
-    private static UpdateBean parseJsonToUpdateBean(String jsonStr) {
-        UpdateBean res = new UpdateBean();
+    private static Update parseJsonToUpdateBean(String jsonStr) {
+        Update res = new Update();
         JSONObject jo;
         try {
             jo = new JSONObject(jsonStr);
